@@ -1,0 +1,67 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# Dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+/notewish/node_modules
+/notewish/.pnp
+/notewish/.pnp.*
+/notewish/.yarn/*
+!/notewish/.yarn/patches
+!/notewish/.yarn/plugins
+!/notewish/.yarn/releases
+!/notewish/.yarn/versions
+
+# Testing
+/coverage
+/notewish/coverage
+
+# Next.js build output
+/.next/
+/out/
+/notewish/.next/
+/notewish/out/
+
+# Production
+/build
+/notewish/build
+
+# Other
+.DS_Store
+*.pem
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+/notewish/.env
+/notewish/.env.local
+/notewish/.env.development.local
+/notewish/.env.test.local
+/notewish/.env.production.local
+
+# Temporary files from video generation
+/temp_*
+/notewish/temp_*
+
+# Manifest file (auto-generated)
+/src/config/template-manifest.json
+/notewish/src/config/template-manifest.json
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+error.log*
+Error-logs
+How-to-run

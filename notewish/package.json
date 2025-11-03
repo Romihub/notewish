@@ -1,0 +1,49 @@
+{
+  "name": "notewish",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "postinstall": "node scripts/generate-template-manifest.js",
+    "dev": "next dev --turbopack -p 3004",
+    "build": "next build --turbopack",
+    "start": "next start -p 3004",
+    "lint": "eslint",
+    "start:screenshot-server": "node -r dotenv/config screenshot-server.js dotenv_config_path=./.env"
+  },
+  "dependencies": {
+    "@babel/parser": "^7.28.5",
+    "@babel/traverse": "^7.28.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "ffmpeg-static": "^5.2.0",
+    "firebase": "^12.4.0",
+    "firebase-admin": "^13.5.0",
+    "framer-motion": "^12.23.24",
+    "geckodriver": "^6.0.2",
+    "html2canvas": "^1.4.1",
+    "lightningcss-win32-x64-msvc": "^1.30.2",
+    "lucide-react": "^0.546.0",
+    "next": "15.5.5",
+    "openai": "^6.4.0",
+    "postcss-color-function": "^4.1.0",
+    "puppeteer": "^24.27.0",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-hot-toast": "^2.6.0",
+    "replicate": "^1.3.1",
+    "selenium-webdriver": "^4.38.0",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@types/selenium-webdriver": "^4.35.3",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.5",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
