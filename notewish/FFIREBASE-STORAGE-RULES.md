@@ -117,3 +117,23 @@ If you still get errors:
 - Upload: $0.05/GB
 
 Each music file ~1-5MB, so you can store ~200-1000 songs per $1/month
+
+
+
+======================
+# GENERATED IMAGE
+
+Go to Firebase Console → Storage → Rules
+Check if allow read: if true; exists
+If not, update the rules and deploy
+
+
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /cards/{cardId}/{imageFile} {
+      allow read: if true;  // Allow public read
+      allow write: if request.auth != null;
+    }
+  }
+}
