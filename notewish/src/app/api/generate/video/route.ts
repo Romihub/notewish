@@ -1,4 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import Replicate from 'replicate';
+
+// Initialize Replicate client
+const replicate = new Replicate({
+  auth: process.env.REPLICATE_API_TOKEN,
+});
 
 // Video generation with multiple provider support (in priority order):
 // 1. Google Veo3 (GOOGLE_VEO_API_KEY)
@@ -15,6 +21,12 @@ const FREEPIK_API_KEY = process.env.FREEPIK_API_KEY;
 const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN;
 
 export async function POST(request: NextRequest) {
+  console.log('🎬 [VIDEO API] Request received.');
+  console.log('🎬 [VIDEO API] Checking environment variables...');
+  console.log(`  - REPLICATE_API_TOKEN: ${REPLICATE_API_TOKEN ? 'Loaded' : 'NOT LOADED'}`);
+  console.log(`  - GOOGLE_VEO_API_KEY: ${GOOGLE_VEO_API_KEY ? 'Loaded' : 'NOT LOADED'}`);
+  console.log(`  - FREEPIK_API_KEY: ${FREEPIK_API_KEY ? 'Loaded' : 'NOT LOADED'}`);
+
   try {
     const {
       description,
@@ -23,6 +35,8 @@ export async function POST(request: NextRequest) {
       duration = 5,
       motionSpeed = 1.0,
       referenceImage = null,
+      aspectRatio = '16:9',
+      resolution = '1080p',
       provider = 'auto', // 'auto', 'veo', 'freepik', 'replicate'
     } = await request.json();
 
@@ -65,39 +79,86 @@ export async function POST(request: NextRequest) {
     const cameraText = cameraModifiers[cameraMovement] || cameraModifiers['static'];
     const motionText = motionSpeedModifiers[motionSpeed] || 'normal speed';
 
-    const enhancedPrompt = `${description}. ${styleText}. ${cameraText}. ${motionText}. High quality, professional composition.`;
+    // If reference image is provided, explicitly mention it in the prompt
+    const imageContext = referenceImage 
+      ? 'Animate the provided image to life. ' 
+      : '';
+
+    const enhancedPrompt = `${imageContext}${description}. ${styleText}. ${cameraText}. ${motionText}. High quality, professional composition.`;
 
     // Try providers in order of priority
     let result = null;
     let usedProvider = '';
 
-    // 1. Try Google Veo3 first
-    if ((provider === 'auto' || provider === 'veo') && GOOGLE_VEO_API_KEY) {
+    // 1. Try Replicate (Google Veo 3.1)
+    if ((provider === 'auto' || provider === 'replicate') && REPLICATE_API_TOKEN) {
+      console.log('🎬 [VIDEO API] Attempting to generate with Replicate (Google Veo 3.1)...');
+      try {
+        result = await generateWithReplicateVeo(enhancedPrompt, duration, referenceImage, aspectRatio);
+        usedProvider = 'replicate-google-veo-3.1';
+        console.log('🎬 [VIDEO API] ✅ Success with Replicate (Google Veo 3.1).');
+      } catch (error: any) {
+        console.error('🎬 [VIDEO API] ❌ Replicate (Google Veo 3.1) failed:', error.message);
+      }
+    }
+
+    // 2. Try Replicate (Kling v2.1)
+    if (!result && (provider === 'auto' || provider === 'replicate') && REPLICATE_API_TOKEN) {
+      console.log('🎬 [VIDEO API] Attempting to generate with Replicate (Kling v2.1)...');
+      try {
+        result = await generateWithKling(enhancedPrompt, duration, referenceImage);
+        usedProvider = 'replicate-kling-v2.1';
+        console.log('🎬 [VIDEO API] ✅ Success with Replicate (Kling v2.1).');
+      } catch (error: any) {
+        console.error('🎬 [VIDEO API] ❌ Replicate (Kling v2.1) failed:', error.message);
+      }
+    }
+
+    // 3. Try Google Veo3 (Direct API)
+    if (!result && (provider === 'auto' || provider === 'veo') && GOOGLE_VEO_API_KEY) {
+      console.log('🎬 [VIDEO API] Attempting to generate with Google Veo3...');
       try {
         result = await generateWithVeo3(enhancedPrompt, duration);
         usedProvider = 'google-veo3';
+        console.log('🎬 [VIDEO API] ✅ Success with Google Veo3.');
       } catch (error: any) {
-        console.error('Veo3 failed:', error.message);
+        console.error('🎬 [VIDEO API] ❌ Google Veo3 failed:', error.message);
       }
     }
 
-    // 2. Try Freepik (Minimax Hailuo)
+    // 4. Try Replicate (Sora 2) as a fallback
+    if (!result && (provider === 'auto' || provider === 'replicate') && REPLICATE_API_TOKEN) {
+      console.log('🎬 [VIDEO API] Attempting to generate with Replicate (Sora 2)...');
+      try {
+        result = await generateWithSora2(enhancedPrompt, duration, referenceImage, aspectRatio, resolution);
+        usedProvider = 'replicate-sora-2';
+        console.log('🎬 [VIDEO API] ✅ Success with Replicate (Sora 2).');
+      } catch (error: any) {
+        console.error('🎬 [VIDEO API] ❌ Replicate (Sora 2) failed:', error.message);
+      }
+    }
+
+    // 5. Try Freepik (Minimax Hailuo)
     if (!result && (provider === 'auto' || provider === 'freepik') && FREEPIK_API_KEY) {
+      console.log('🎬 [VIDEO API] Attempting to generate with Freepik...');
       try {
         result = await generateWithFreepik(enhancedPrompt, duration, referenceImage);
         usedProvider = 'freepik-minimax-hailuo';
+        console.log('🎬 [VIDEO API] ✅ Success with Freepik.');
       } catch (error: any) {
-        console.error('Freepik failed:', error.message);
+        console.error('🎬 [VIDEO API] ❌ Freepik failed:', error.message);
       }
     }
 
-    // 3. Try Replicate (Wan 2.2)
+    // 6. Try Replicate (Wan 2.2) as a fallback
     if (!result && (provider === 'auto' || provider === 'replicate') && REPLICATE_API_TOKEN) {
+      console.log('🎬 [VIDEO API] Attempting to generate with Replicate (Wan 2.2)...');
       try {
         result = await generateWithReplicate(enhancedPrompt, duration, referenceImage);
         usedProvider = 'replicate-wan-2.2';
+        console.log('🎬 [VIDEO API] ✅ Success with Replicate (Wan 2.2).');
       } catch (error: any) {
-        console.error('Replicate failed:', error.message);
+        console.error('🎬 [VIDEO API] ❌ Replicate (Wan 2.2) failed:', error.message);
       }
     }
 
@@ -105,7 +166,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: 'No video generation API configured. Please add GOOGLE_VEO_API_KEY, FREEPIK_API_KEY, or REPLICATE_API_TOKEN to your .env.local file.',
+          error: 'No video generation API configured. Please add GOOGLE_VEO_API_KEY, FREEPIK_API_KEY, or REPLICATE_API_TOKEN to your .env file.',
         },
         { status: 500 }
       );
@@ -133,23 +194,32 @@ export async function POST(request: NextRequest) {
 
 // Google Veo3 implementation
 async function generateWithVeo3(prompt: string, duration: number) {
-  const response = await fetch('https://generativelanguage.googleapis.com/v1/models/veo-3:generate', {
+  const url = `https://generativelanguage.googleapis.com/v1/models/veo-3:generate?key=${GOOGLE_VEO_API_KEY}`;
+  const requestBody = {
+    prompt,
+    duration,
+  };
+
+  console.log('🎬 [VEO3] Sending request to:', url);
+  console.log('🎬 [VEO3] Request body:', JSON.stringify(requestBody, null, 2));
+  
+  const response = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${GOOGLE_VEO_API_KEY}`,
     },
-    body: JSON.stringify({
-      prompt,
-      duration,
-    }),
+    body: JSON.stringify(requestBody),
   });
 
   if (!response.ok) {
-    throw new Error('Veo3 API request failed');
+    const errorBody = await response.text();
+    console.error('🎬 [VEO3] API Error Response:', errorBody);
+    throw new Error(`Veo3 API request failed with status ${response.status}: ${errorBody}`);
   }
 
   const data = await response.json();
+  console.log('🎬 [VEO3] API Success Response:', JSON.stringify(data, null, 2));
+  
   return {
     videoUrl: data.video_url || data.output?.url,
     taskId: data.id,
@@ -186,32 +256,252 @@ async function generateWithFreepik(prompt: string, duration: number, referenceIm
   };
 }
 
-// Replicate Wan 2.2 implementation
-async function generateWithReplicate(prompt: string, duration: number, referenceImage: string | null) {
-  const response = await fetch('https://api.replicate.com/v1/predictions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Token ${REPLICATE_API_TOKEN}`,
-    },
-    body: JSON.stringify({
-      version: 'wan-2.2-version-id', // Replace with actual version ID
-      input: {
-        prompt,
-        duration,
-        image: referenceImage,
-      },
-    }),
-  });
+// Replicate Sora 2 implementation
+async function generateWithSora2(
+  prompt: string, 
+  duration: number, 
+  referenceImage: string | null,
+  aspectRatio: string = '16:9',
+  resolution: string = '1080p'
+) {
+  // Build the input object
+  const input: any = {
+    prompt: prompt,
+  };
 
-  if (!response.ok) {
-    throw new Error('Replicate API request failed');
+  // Add duration - Sora 2 uses "seconds" not "duration"
+  if (duration) {
+    input.seconds = duration;
   }
 
-  const data = await response.json();
+  // Add reference image - Sora 2 uses "input_reference" not "image"
+  if (referenceImage) {
+    input.input_reference = referenceImage;
+  }
+
+  // Convert aspect ratio to Sora 2 format (landscape/portrait)
+  if (aspectRatio) {
+    // Map common aspect ratios to landscape/portrait
+    const aspectRatioMap: Record<string, string> = {
+      '16:9': 'landscape',
+      '4:3': 'landscape',
+      '1:1': 'landscape', // Default to landscape for square
+      '9:16': 'portrait',
+      '3:4': 'portrait',
+    };
+    input.aspect_ratio = aspectRatioMap[aspectRatio] || 'landscape';
+  }
+
+  // Note: Sora 2 may not support custom resolution parameter
+  // The resolution is determined by the aspect ratio
+
+  console.log('🎬 [SORA2] Input parameters:', JSON.stringify({
+    ...input,
+    input_reference: input.input_reference ? '[base64 data]' : null
+  }, null, 2));
+
+  const output = await replicate.run(
+    "openai/sora-2", // Using the Sora 2 model
+    { input }
+  );
+
+  // The output format from Replicate can vary. We need to handle it robustly.
+  console.log('🎬 [SORA2] Raw output received:', JSON.stringify(output, null, 2));
+  let videoUrl: string | null = null;
+
+  if (output && typeof output === 'object') {
+    try {
+      // Try toString() first (works for FileOutput objects)
+      if (typeof (output as any).toString === 'function') {
+        const urlString = String(output);
+        if (urlString.startsWith('http')) {
+          videoUrl = urlString;
+          console.log('🎬 [SORA2] Extracted via toString():', videoUrl.slice(0, 80));
+        }
+      }
+      
+      // Try array format
+      if (!videoUrl && Array.isArray(output) && output.length > 0) {
+        const firstItem = output[0];
+        if (typeof firstItem === 'string') {
+          videoUrl = firstItem;
+        } else if (firstItem && typeof firstItem === 'object') {
+          if (typeof (firstItem as any).toString === 'function') {
+            const itemString = String(firstItem);
+            if (itemString.startsWith('http')) {
+              videoUrl = itemString;
+            }
+          }
+        }
+        if (videoUrl) {
+          console.log('🎬 [SORA2] Extracted from array:', videoUrl.slice(0, 80));
+        }
+      }
+      
+      // Try url property
+      if (!videoUrl && 'url' in output) {
+        const urlValue = typeof (output as any).url === 'function' ? await (output as any).url() : (output as any).url;
+        if (typeof urlValue === 'string') {
+          videoUrl = urlValue;
+          console.log('🎬 [SORA2] Extracted from url property:', urlValue.slice(0, 80));
+        }
+      }
+    } catch (e) {
+      console.error('🎬 [SORA2] Error parsing Replicate output:', e);
+    }
+  } else if (typeof output === 'string') {
+    videoUrl = output;
+    console.log('🎬 [SORA2] Direct string:', String(output).substring(0, 80));
+  }
+
+  if (!videoUrl) {
+    console.error('🎬 [SORA2] Returned an unexpected output format:', output);
+    throw new Error('Failed to get video URL from Sora 2');
+  }
+
+  console.log('🎬 [SORA2] ✅ Success! Video URL:', videoUrl.substring(0, 100));
   return {
-    videoUrl: data.output?.[0] || data.urls?.get,
-    taskId: data.id,
-    status: data.status,
+    videoUrl,
+    status: 'succeeded',
   };
+}
+
+// Replicate Google Veo 3.1 implementation
+async function generateWithReplicateVeo(
+  prompt: string,
+  duration: number,
+  referenceImage: string | null,
+  aspectRatio: string = '16:9'
+) {
+  const input: any = {
+    prompt: prompt,
+    duration: duration,
+    generate_audio: true, // As per the sample request
+  };
+
+  if (referenceImage) {
+    // Veo 3.1 expects an array of reference images
+    input.reference_images = [referenceImage];
+  }
+
+  const aspectRatioMap: Record<string, string> = {
+    '16:9': '16:9',
+    '4:3': '4:3',
+    '1:1': '1:1',
+    '9:16': '9:16',
+    '3:4': '3:4',
+  };
+  input.aspect_ratio = aspectRatioMap[aspectRatio] || '16:9';
+
+  console.log('🎬 [REPLICATE-VEO] Input parameters:', JSON.stringify({
+    ...input,
+    reference_images: input.reference_images ? ['[base64 data]'] : null
+  }, null, 2));
+
+  const output = await replicate.run(
+    "google/veo-3.1",
+    { input }
+  );
+
+  // Using the proven robust URL extraction logic from Sora 2
+  console.log('🎬 [REPLICATE-VEO] Raw output received:', JSON.stringify(output, null, 2));
+  let videoUrl: string | null = null;
+
+  if (output && typeof output === 'object') {
+    try {
+      if (typeof (output as any).toString === 'function') {
+        const urlString = String(output);
+        if (urlString.startsWith('http')) {
+          videoUrl = urlString;
+        }
+      }
+      if (!videoUrl && Array.isArray(output) && output.length > 0) {
+        const firstItem = output[0];
+        if (typeof firstItem === 'string') {
+          videoUrl = firstItem;
+        } else if (firstItem && typeof firstItem === 'object' && typeof (firstItem as any).toString === 'function') {
+          const itemString = String(firstItem);
+          if (itemString.startsWith('http')) videoUrl = itemString;
+        }
+      }
+      if (!videoUrl && 'url' in output) {
+        const urlValue = typeof (output as any).url === 'function' ? await (output as any).url() : (output as any).url;
+        if (typeof urlValue === 'string') videoUrl = urlValue;
+      }
+    } catch (e) {
+      console.error('🎬 [REPLICATE-VEO] Error parsing Replicate output:', e);
+    }
+  } else if (typeof output === 'string') {
+    videoUrl = output;
+  }
+
+  if (!videoUrl) {
+    console.error('🎬 [REPLICATE-VEO] Returned an unexpected output format:', output);
+    throw new Error('Failed to get video URL from Replicate Veo 3.1');
+  }
+
+  console.log('🎬 [REPLICATE-VEO] ✅ Success! Video URL:', videoUrl.substring(0, 100));
+  return {
+    videoUrl,
+    status: 'succeeded',
+  };
+}
+
+// Replicate Kling v2.1 implementation
+async function generateWithKling(
+  prompt: string,
+  duration: number,
+  referenceImage: string | null
+) {
+  const input: any = {
+    prompt: prompt,
+    duration: duration,
+    mode: 'standard',
+  };
+
+  if (referenceImage) {
+    input.start_image = referenceImage;
+  }
+
+  console.log('🎬 [KLING] Input parameters:', JSON.stringify({
+    ...input,
+    start_image: input.start_image ? '[base64 data]' : null
+  }, null, 2));
+
+  const output = await replicate.run(
+    "kwaivgi/kling-v2.1",
+    { input }
+  );
+
+  // Robust URL extraction
+  console.log('🎬 [KLING] Raw output received:', JSON.stringify(output, null, 2));
+  let videoUrl: string | null = null;
+
+  if (output && typeof output === 'object' && Array.isArray(output) && output.length > 0) {
+    videoUrl = output[0];
+  } else if (typeof output === 'string') {
+    videoUrl = output;
+  }
+
+  if (!videoUrl || typeof videoUrl !== 'string') {
+    console.error('🎬 [KLING] Returned an unexpected output format:', output);
+    throw new Error('Failed to get video URL from Kling v2.1');
+  }
+
+  console.log('🎬 [KLING] ✅ Success! Video URL:', videoUrl.substring(0, 100));
+  return {
+    videoUrl,
+    status: 'succeeded',
+  };
+}
+
+// Replicate Wan 2.2 implementation (fallback)
+async function generateWithReplicate(
+  prompt: string, 
+  duration: number, 
+  referenceImage: string | null
+) {
+  // This function is now a fallback and can be updated or removed
+  // For now, we'll keep it pointing to Sora 2 as well
+  return generateWithSora2(prompt, duration, referenceImage, '16:9', '1080p');
 }

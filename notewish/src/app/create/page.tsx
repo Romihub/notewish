@@ -28,6 +28,14 @@ export default function TemplateSelection() {
       features: ["AI Messages", "Background Music", "Page Flip Animation"],
     },
     {
+      id: "general-cinematic-story-01",
+      name: "Cinematic Story",
+      type: "video",
+      thumbnail: "https://images.unsplash.com/photo-1505628346881-b72b27e84530?w=400&h=300&fit=crop",
+      description: "Elegant cinematic card with video and music support",
+      features: ["Cinematic", "Elegant", "Video", "Music"],
+    },
+    {
       id: "birthday-sparkle",
       name: "Birthday Sparkle",
       type: "card",

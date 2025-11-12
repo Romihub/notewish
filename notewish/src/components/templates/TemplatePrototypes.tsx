@@ -17,7 +17,7 @@ export function MinimalistMessageTemplate({
   occasion?: string;
 }) {
   return (
-    <div className="relative w-full h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
+    <div data-template-root="true" className="relative w-full h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Decorative circles */}
       <div className="absolute top-20 right-20 w-64 h-64 bg-purple-200 rounded-full opacity-20 blur-3xl" />
       <div className="absolute bottom-20 left-20 w-96 h-96 bg-pink-200 rounded-full opacity-20 blur-3xl" />
@@ -67,7 +67,7 @@ export function ClassicPhotoCardTemplate({
   occasion?: string;
 }) {
   return (
-    <div className="relative w-full h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-purple-50 via-pink-50 to-purple-50">
+    <div data-template-root="true" className="relative w-full h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-purple-50 via-pink-50 to-purple-50">
       {/* Content Container */}
       <div className="relative max-w-5xl w-full px-8">
         <div className="grid md:grid-cols-2 gap-12 items-center">
@@ -142,7 +142,7 @@ export function RomanticMusicCardTemplate({
   };
   
   return (
-    <div className="relative w-full h-screen overflow-hidden">
+    <div data-template-root="true" className="relative w-full h-screen overflow-hidden">
       {/* Background Image (blurred) */}
       <div 
         className="absolute inset-0 bg-cover bg-center"
@@ -240,7 +240,7 @@ export function VoiceMessageCardTemplate({
   };
   
   return (
-    <div className="relative w-full h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100">
+    <div data-template-root="true" className="relative w-full h-screen flex items-center justify-center bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100">
       <div className="max-w-2xl w-full mx-8">
         {/* Card Container */}
         <motion.div
@@ -342,7 +342,7 @@ export function UltimateExperienceTemplate({
   };
   
   return (
-    <div className="relative w-full h-screen overflow-hidden bg-black">
+    <div data-template-root="true" className="relative w-full h-screen overflow-hidden bg-black">
       {/* Background Media */}
       <div className="absolute inset-0">
         {activeMedia === "video" && videoUrl ? (

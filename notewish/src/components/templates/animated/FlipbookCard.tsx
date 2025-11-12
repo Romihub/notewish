@@ -22,7 +22,7 @@ export function FlipbookCard({
   const totalPages = 6;
 
   return (
-    <div className="w-full max-w-md mx-auto">
+    <div data-template-root="true" className="w-full max-w-md mx-auto">
       {/* Card Content */}
       <div className="bg-white rounded-2xl shadow-2xl overflow-hidden" style={{ height: '600px' }}>
         

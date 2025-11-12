@@ -296,3 +296,26 @@ The prompts should explicitly reference the input image:
 Test the image generation now - it should work with nano-banana!
 
 **
+
+
+
+=====================================
+
+
+@/notewish/screenshot-server-alt.js using this awreness 
+
+cant we do this:
+MAJOR CHANGE - : ELIMINATE background music playing from start to finish
+
+OTHER CHANGES:
+page with message - Display message + play bg music for the duration it appears on screen
+
+page with image - displays image
+
+page with video - only plays video (inoticed that the server caused the video to be damaged by distorting the lipsync, the mouth wassaying something else and the sound was off)
+
+page with voice note/message - (inoticed thiswas completely skipped by the server although a screenshot of the page was taken) let this play on its own , no bg music
+
+page with music - here let the music play fully on its own
+
+is this possible?

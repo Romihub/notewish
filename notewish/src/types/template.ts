@@ -122,10 +122,11 @@ export interface TemplateProps {
   customizations?: TemplateCustomizations;
   
   // Interaction Mode
-  mode?: "preview" | "view" | "edit" | "render";
+  mode?: "preview" | "view" | "edit" | "render" | "video";
   
   // For server-side rendering/video generation
   renderer?: TemplateRenderer;
+  initialPage?: number;
 }
 
 export interface TemplateCustomizations {

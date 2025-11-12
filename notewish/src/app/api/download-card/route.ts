@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { cardId } = await request.json();
+    const { cardId, useCompositionEngine } = await request.json();
     
     if (!cardId) {
       return NextResponse.json(
@@ -14,8 +14,16 @@ export async function POST(request: NextRequest) {
     // The URL for the isolated render view
     const renderUrl = `http://localhost:3004/render/${cardId}`;
 
+    // Choose which video generation server to use
+    // Port 4003: New composition-based system (recommended)
+    // Port 4002: Old screenshot-based system (fallback)
+    const serverPort = useCompositionEngine !== false ? 4003 : 4002;
+    const serverName = serverPort === 4003 ? 'COMPOSITION' : 'LEGACY';
+    
+    console.log(`[DOWNLOAD] Using ${serverName} video generation server (port ${serverPort})`);
+
     // Call the separate video generation server
-    const response = await fetch('http://localhost:4000/generate-video', {
+    const response = await fetch(`http://localhost:${serverPort}/generate-video`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

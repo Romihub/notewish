@@ -96,7 +96,7 @@ export default function FlipbookMiniTemplate({
   };
 
   return (
-    <div className="relative w-full h-screen flex items-start justify-center overflow-hidden pt-16">
+    <div data-template-root="true" className="relative w-full h-screen flex items-start justify-center overflow-hidden pt-16">
       {/* Background */}
       <div className="absolute inset-0 bg-gradient-to-br from-purple-100 via-pink-50 to-blue-50">
         <div

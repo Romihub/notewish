@@ -1,11 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { OpenAI } from 'openai';
 import Replicate from 'replicate';
-
-// Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
 
 // Initialize Replicate client
 const replicate = new Replicate({
@@ -39,9 +33,9 @@ export async function POST(request: NextRequest) {
       return await generateWithReplicate(description, style, aspectRatio, referenceImage);
     }
 
-    // Otherwise, use DALL-E 3 for text-to-image
-    console.log('🎨 [IMAGE API] Using DALL-E 3 (text-to-image)');
-    return await generateWithDallE(description, style, aspectRatio, quality);
+    // Otherwise, use bytedance/seedream-4 for text-to-image
+    console.log('🎨 [IMAGE API] Using bytedance/seedream-4 (text-to-image)');
+    return await generateWithSeedream(description, style, aspectRatio);
   } catch (error: any) {
     console.error('🎨 [IMAGE API] ❌ Top-level error:', error);
     console.error('🎨 [IMAGE API] Error stack:', error.stack);
@@ -55,15 +49,14 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// DALL-E 3 - Text to Image
-async function generateWithDallE(
+// Bytedance Seedream-4 - Text to Image
+async function generateWithSeedream(
   description: string,
   style: string,
-  aspectRatio: string,
-  quality: string
+  aspectRatio: string
 ) {
   try {
-    console.log('🎨 [DALL-E] Starting generation...');
+    console.log('🎨 [SEEDREAM] Starting generation...');
 
     // Build the enhanced prompt based on style and description
     const stylePrompts: Record<string, string> = {
@@ -83,56 +76,107 @@ async function generateWithDallE(
 
     const enhancedPrompt = `${description}${styleModifier}. High quality, professional composition, beautiful lighting.`;
     
-    console.log('🎨 [DALL-E] Enhanced prompt:', enhancedPrompt.substring(0, 150));
+    console.log('🎨 [SEEDREAM] Enhanced prompt:', enhancedPrompt.substring(0, 150));
 
-    // Determine size based on aspect ratio
-    const sizeMap: Record<string, '1024x1024' | '1792x1024' | '1024x1792'> = {
-      '1:1': '1024x1024',
-      '16:9': '1792x1024',
-      '4:3': '1792x1024',
-      '9:16': '1024x1792',
-      '3:4': '1024x1792',
+    // Determine dimensions based on aspect ratio (ensuring height >= 1024)
+    const dimensionMap: Record<string, [number, number]> = {
+      '1:1': [1024, 1024],
+      '16:9': [1792, 1024],
+      '4:3': [1536, 1152],
+      '9:16': [1024, 1792],
+      '3:4': [1152, 1536],
     };
 
-    const size = aspectRatio && sizeMap[aspectRatio] ? sizeMap[aspectRatio] : '1024x1024';
+    const [width, height] = aspectRatio && dimensionMap[aspectRatio] 
+      ? dimensionMap[aspectRatio] 
+      : [1024, 1024];
     
-    console.log('🎨 [DALL-E] Calling API with size:', size, 'quality:', quality);
+    console.log('🎨 [SEEDREAM] Calling API with size:', `${width}x${height}`);
 
-    // Call DALL-E 3 API
-    const response = await openai.images.generate({
-      model: 'dall-e-3',
-      prompt: enhancedPrompt,
-      n: 1,
-      size: size,
-      quality: quality as 'standard' | 'hd',
-      style: 'vivid',
-    });
+    // Call Replicate API
+    const output = await replicate.run(
+      "bytedance/seedream-4",
+      {
+        input: {
+          prompt: enhancedPrompt,
+          width: width,
+          height: height,
+          negative_prompt: "worst quality, low quality, blurry, distorted",
+        }
+      }
+    );
 
-    const imageUrl = response.data?.[0]?.url;
-    const revisedPrompt = response.data?.[0]?.revised_prompt;
+    console.log('🎨 [SEEDREAM] Received output!');
+    console.log('🎨 [SEEDREAM] output type:', typeof output);
+    console.log('🎨 [SEEDREAM] output keys:', output && typeof output === 'object' ? Object.keys(output) : 'N/A');
+    console.log('🎨 [SEEDREAM] output toString():', output && typeof output === 'object' && typeof (output as any).toString === 'function' ? String(output) : 'N/A');
+    console.log('🎨 [SEEDREAM] output JSON:', JSON.stringify(output).substring(0, 300));
 
-    console.log('🎨 [DALL-E] Response received');
-    console.log('🎨 [DALL-E] Image URL:', imageUrl?.substring(0, 80) + '...');
-    console.log('🎨 [DALL-E] Revised prompt:', revisedPrompt?.substring(0, 100));
-
-    if (!imageUrl) {
-      console.error('🎨 [DALL-E] ❌ No image URL in response');
-      throw new Error('No image URL returned from DALL-E');
+    // Extract image URL using the same robust logic as generateWithReplicate
+    let imageUrl: string | null = null;
+    
+    if (output && typeof output === 'object') {
+      try {
+        // Try .toString() first (works for FileOutput objects)
+        if (typeof (output as any).toString === 'function') {
+          const urlString = String(output);
+          if (urlString.startsWith('http')) {
+            imageUrl = urlString;
+            console.log(`🎨 [SEEDREAM] Extracted via toString():`, imageUrl.slice(0, 80));
+          }
+        }
+        
+        // Fallback to other methods if toString didn't work
+        if (!imageUrl && typeof (output as any).url === 'function') {
+          imageUrl = await (output as any).url();
+          console.log(`🎨 [SEEDREAM] Extracted via url() method:`, imageUrl ? String(imageUrl).slice(0, 80) : 'null');
+        } else if (!imageUrl && 'url' in output && typeof (output as any).url === 'string') {
+          imageUrl = (output as any).url;
+          console.log(`🎨 [SEEDREAM] Extracted from url property:`, imageUrl ? String(imageUrl).slice(0, 80) : 'null');
+        } else if (!imageUrl && Array.isArray(output) && output.length > 0) {
+          // Handle array output
+          const firstItem = output[0];
+          if (typeof firstItem === 'string') {
+            imageUrl = firstItem;
+          } else if (firstItem && typeof firstItem === 'object') {
+            // Try toString on array item
+            if (typeof (firstItem as any).toString === 'function') {
+              const itemString = String(firstItem);
+              if (itemString.startsWith('http')) {
+                imageUrl = itemString;
+              }
+            } else if ('url' in firstItem) {
+              imageUrl = typeof firstItem.url === 'function' ? await firstItem.url() : firstItem.url;
+            }
+          }
+          console.log(`🎨 [SEEDREAM] Extracted from array:`, imageUrl ? String(imageUrl).slice(0, 80) : 'null');
+        }
+      } catch (urlError: any) {
+        console.error(`🎨 [SEEDREAM] Error extracting URL:`, urlError.message);
+      }
+    } else if (typeof output === 'string') {
+      imageUrl = output;
+      console.log(`🎨 [SEEDREAM] Direct string:`, String(output).slice(0, 80));
     }
 
-    console.log('🎨 [DALL-E] ✅ Success!');
+    if (!imageUrl || typeof imageUrl !== 'string' || !imageUrl.startsWith('http')) {
+      console.error('🎨 [SEEDREAM] ❌ No valid image URL in response');
+      throw new Error('No image URL returned from Seedream');
+    }
+
+    console.log('🎨 [SEEDREAM] ✅ Success! Image URL:', imageUrl.substring(0, 100));
     return NextResponse.json({
       success: true,
       imageUrl,
-      revisedPrompt,
-      creditsUsed: quality === 'hd' ? 2 : 1,
-      modelUsed: 'dall-e-3',
+      revisedPrompt: enhancedPrompt,
+      creditsUsed: 1,
+      modelUsed: 'bytedance/seedream-4',
     });
   } catch (error: any) {
-    console.error('🎨 [DALL-E] ❌ Error:', error);
-    console.error('🎨 [DALL-E] Error message:', error.message);
-    console.error('🎨 [DALL-E] Error stack:', error.stack);
-    throw new Error(`DALL-E 3 error: ${error.message}`);
+    console.error('🎨 [SEEDREAM] ❌ Error:', error);
+    console.error('🎨 [SEEDREAM] Error message:', error.message);
+    console.error('🎨 [SEEDREAM] Error stack:', error.stack);
+    throw new Error(`Seedream error: ${error.message}`);
   }
 }
 

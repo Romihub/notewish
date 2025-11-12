@@ -6,6 +6,7 @@
 
 import { ComponentType } from 'react';
 import { TemplateProps } from '@/types/template';
+import { withPageRenderer } from '@/components/templates/withPageRenderer';
 
 // Template component map
 const templateComponents: Record<string, () => Promise<{ default: ComponentType<TemplateProps> }>> = {
@@ -21,7 +22,7 @@ const templateComponents: Record<string, () => Promise<{ default: ComponentType<
  * Get template component by templateId
  * Uses dynamic imports for code splitting (only loads what's needed)
  */
-export async function getTemplateComponent(templateId: string): Promise<ComponentType<TemplateProps> | null> {
+export async function getTemplateComponent(templateId: string): Promise<ComponentType<any> | null> {
   const loader = templateComponents[templateId];
   
   if (!loader) {
@@ -31,7 +32,9 @@ export async function getTemplateComponent(templateId: string): Promise<Componen
   
   try {
     const module = await loader();
-    return module.default;
+    const OriginalComponent = module.default;
+    // Wrap the original component with the HOC to provide page rendering logic
+    return withPageRenderer(OriginalComponent);
   } catch (error) {
     console.error(`Failed to load template "${templateId}":`, error);
     return null;

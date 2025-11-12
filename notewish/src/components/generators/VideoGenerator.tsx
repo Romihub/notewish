@@ -33,6 +33,8 @@ export default function VideoGenerator({
   const [cameraMovement, setCameraMovement] = useState("static");
   const [videoDuration, setVideoDuration] = useState(5);
   const [motionSpeed, setMotionSpeed] = useState(1.0);
+  const [aspectRatio, setAspectRatio] = useState("16:9");
+  const [resolution, setResolution] = useState("1080p");
   const [referenceImage, setReferenceImage] = useState<string | null>(null);
   const [generatedVideoUrl, setGeneratedVideoUrl] = useState<string | null>(null);
   const [generatedVideoPrompt, setGeneratedVideoPrompt] = useState<string | null>(null);
@@ -101,6 +103,8 @@ export default function VideoGenerator({
         cameraMovement: cameraMovement,
         duration: videoDuration,
         motionSpeed: motionSpeed,
+        aspectRatio: aspectRatio,
+        resolution: resolution,
         referenceImage: referenceImage,
       };
       console.log('🎬 [STEP 1] Request body:', requestBody);
@@ -296,7 +300,7 @@ export default function VideoGenerator({
           Duration
         </label>
         <div className="flex gap-3">
-          {[3, 5, 10, 15, 30].map((duration) => (
+          {[4, 5, 8, 10, 12].map((duration) => (
             <button
               key={duration}
               onClick={() => setVideoDuration(duration)}
@@ -334,6 +338,59 @@ export default function VideoGenerator({
               }`}
             >
               {speed.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Aspect Ratio */}
+      <div className="mb-6">
+        <label className="block text-sm font-semibold text-gray-900 mb-3 font-[family-name:var(--font-poppins)]">
+          Aspect Ratio
+        </label>
+        <div className="flex gap-3">
+          {[
+            { value: "16:9", label: "16:9 (Landscape)" },
+            { value: "9:16", label: "9:16 (Portrait)" },
+            { value: "1:1", label: "1:1 (Square)" },
+            { value: "4:3", label: "4:3" }
+          ].map((ratio) => (
+            <button
+              key={ratio.value}
+              onClick={() => setAspectRatio(ratio.value)}
+              className={`px-4 py-2 text-sm rounded-xl transition-all font-[family-name:var(--font-inter)] ${
+                aspectRatio === ratio.value
+                  ? "bg-gray-900 text-white shadow-[0_0_0_2px_rgba(168,85,247,0.3)]"
+                  : "bg-gray-100 hover:bg-gray-200 text-gray-700"
+              }`}
+            >
+              {ratio.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Resolution/Quality */}
+      <div className="mb-6">
+        <label className="block text-sm font-semibold text-gray-900 mb-3 font-[family-name:var(--font-poppins)]">
+          Quality
+        </label>
+        <div className="flex gap-3">
+          {[
+            { value: "720p", label: "720p (HD)" },
+            { value: "1080p", label: "1080p (Full HD)" },
+            { value: "4k", label: "4K (Ultra HD)" }
+          ].map((qual) => (
+            <button
+              key={qual.value}
+              onClick={() => setResolution(qual.value)}
+              className={`px-4 py-2 text-sm rounded-xl transition-all font-[family-name:var(--font-inter)] ${
+                resolution === qual.value
+                  ? "bg-gray-900 text-white shadow-[0_0_0_2px_rgba(168,85,247,0.3)]"
+                  : "bg-gray-100 hover:bg-gray-200 text-gray-700"
+              }`}
+            >
+              {qual.label}
             </button>
           ))}
         </div>
